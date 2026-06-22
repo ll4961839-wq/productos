@@ -1,0 +1,8 @@
+{
+  "name": "Agricovet - Salud Animal e Insumos Premium",
+  "description": "Catálogo profesional y landing page de Agricovet, especialistas en salud animal y productos veterinarios premium.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
