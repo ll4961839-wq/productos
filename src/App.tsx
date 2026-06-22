@@ -298,28 +298,23 @@ export default function App() {
       {/* Navbar Premium Sticky */}
       <nav className="sticky top-0 z-50 bg-white/85 backdrop-blur-md border-b border-neutral-100/80 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 h-20 flex justify-between items-center">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <img 
-              src="/agricovet.png" 
-              alt="Agricovet Logo" 
-              className="h-9 sm:h-11 w-auto object-contain cursor-pointer" 
-              onError={(e) => {
-                // If agricovet.png is not found, fallback to elegant text logo
-                e.currentTarget.style.display = 'none';
-                const fallback = document.getElementById('navbar-text-logo-fallback');
-                if (fallback) fallback.classList.remove('hidden');
-              }}
-            />
-            <div id="navbar-text-logo-fallback" className="hidden flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0">
-                <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </div>
-              <span className="text-base sm:text-xl font-black tracking-tighter text-neutral-900 uppercase">
+          <a href="#inicio" className="flex items-center gap-2.5 sm:gap-4 select-none group">
+            <div className="relative">
+              <img 
+                src="/agricovet.png" 
+                alt="Agricovet Logo" 
+                className="h-11 sm:h-14 w-auto object-contain hover:scale-105 transition-transform duration-300" 
+              />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm sm:text-lg font-black tracking-tighter text-neutral-900 uppercase gap-0 leading-none group-hover:text-emerald-600 transition-colors">
                 AGRIC<span className="text-emerald-600">OVET</span>
-                <span className="block text-[6px] sm:text-[8px] font-medium tracking-widest text-neutral-400 -mt-1">Insumos de Vanguardia</span>
+              </span>
+              <span className="text-[7px] sm:text-[9px] font-bold tracking-[0.15em] text-neutral-400 uppercase leading-none mt-1">
+                De Guatemala
               </span>
             </div>
-          </div>
+          </a>
 
           <div className="flex items-center gap-2 sm:gap-4 md:gap-8 text-xs sm:text-sm font-bold tracking-wide uppercase text-neutral-500">
             <a href="#inicio" className="hover:text-emerald-600 transition-colors hidden sm:inline-block">Inicio</a>
@@ -452,6 +447,18 @@ export default function App() {
                 transition={{ duration: 1, delay: 0.2 }}
                 className="lg:col-span-5 relative group"
               >
+                {/* Official Stamp Logo */}
+                <motion.div 
+                  whileHover={{ scale: 1.1, rotate: 6 }}
+                  className="absolute -top-8 -right-4 bg-white p-3 rounded-full shadow-2xl border border-neutral-100 z-20 flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 cursor-pointer select-none"
+                >
+                  <img 
+                    src="/agricovet.png" 
+                    alt="Sello Agricovet" 
+                    className="w-full h-full object-contain"
+                  />
+                </motion.div>
+
                 <div className="aspect-square rounded-[2.5rem] overflow-hidden shadow-[0_45px_90px_-25px_rgba(0,0,0,0.12)] relative">
                   <img 
                     src="https://images.unsplash.com/photo-1599443015574-be5fe8a05783?auto=format&fit=crop&q=80&w=1000" 
@@ -746,24 +753,14 @@ export default function App() {
       <footer className="py-20 bg-neutral-950 text-neutral-400 border-t border-neutral-900 relative z-20">
         <div className="max-w-7xl mx-auto px-6 text-center space-y-12">
           {/* Logo Brand with dynamic fallback */}
-          <div className="flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center select-none">
             <img 
               src="/agricovet.png" 
               alt="Agricovet Logo" 
-              className="h-10 sm:h-12 w-auto object-contain mb-2" 
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                const fallback = document.getElementById('footer-text-logo-fallback');
-                if (fallback) fallback.classList.remove('hidden');
-              }}
+              className="h-16 sm:h-20 w-auto object-contain mb-3 filter grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer" 
             />
-            <div id="footer-text-logo-fallback" className="hidden flex items-center justify-center gap-3">
-              <div className="w-8 h-8 bg-neutral-800 rounded-lg flex items-center justify-center">
-                <ShoppingBag className="w-5 h-5 text-neutral-400" />
-              </div>
-              <span className="text-sm font-black tracking-widest uppercase text-white">Agricovet Insumos</span>
-            </div>
-            <p className="text-[10px] text-neutral-600 tracking-wider">Insumos de Vanguardia</p>
+            <p className="text-xs font-black text-white tracking-widest uppercase mb-1">AGRIC<span className="text-emerald-500">OVET</span></p>
+            <p className="text-[9px] text-neutral-500 tracking-wider">De Guatemala S.A. • Insumos de Vanguardia</p>
           </div>
 
           {/* Social Links Panel */}
