@@ -23,7 +23,9 @@ import {
   ShieldCheck,
   Zap,
   Package,
-  Settings
+  Settings,
+  Plus,
+  ChevronDown
 } from 'lucide-react';
 import { supabase } from './supabase';
 import { Producto, Categoria } from './types';
@@ -55,10 +57,15 @@ export default function App() {
   const [isCreating, setIsCreating] = useState(false);
   const [newProductName, setNewProductName] = useState('');
   const [newProductCategory, setNewProductCategory] = useState('');
+  const [visibleCount, setVisibleCount] = useState(12);
 
   useEffect(() => {
     fetchProductos();
   }, []);
+
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [categoriaActiva, filtro]);
 
   async function fetchProductos() {
     try {
@@ -78,6 +85,58 @@ export default function App() {
     }
   }
 
+  // Función helper para comprimir la imagen en el cliente antes de subirla
+  const compressImage = (file: File, maxWidth = 1000, maxHeight = 1000, quality = 0.82): Promise<Blob> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Calcular proporciones óptimas
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  resolve(blob);
+                } else {
+                  resolve(file); // fallback
+                }
+              },
+              'image/jpeg',
+              quality
+            );
+          } else {
+            resolve(file);
+          }
+        };
+        img.onerror = () => resolve(file);
+      };
+      reader.onerror = () => resolve(file);
+    });
+  };
+
   // Manejo de subida de imágenes a Supabase Storage
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>, id: string | number) => {
     const file = e.target.files?.[0];
@@ -88,10 +147,16 @@ export default function App() {
       
       const fileName = sanitizeFileName(file.name);
       
+      // Comprimir imagen antes de subir
+      let uploadPayload: File | Blob = file;
+      if (file.type.startsWith('image/')) {
+        uploadPayload = await compressImage(file);
+      }
+      
       // 1. Subida al Bucket 'productos'
       const { error: uploadError } = await supabase.storage
         .from('productos')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, uploadPayload, { upsert: true, contentType: 'image/jpeg' });
 
       if (uploadError) throw uploadError;
 
@@ -113,7 +178,7 @@ export default function App() {
         p.Identificación === id ? { ...p, Imagen: publicUrl, imagen_url: publicUrl } : p
       ));
 
-      alert("✨ ¡Imagen guardada correctamente en Supabase!");
+      alert("✨ ¡Imagen optimizada y guardada correctamente en Supabase!");
     } catch (err: any) {
       console.error('Error en carga:', err);
       alert('Error al subir la imagen: ' + (err.message || 'Error desconocido'));
@@ -134,10 +199,16 @@ export default function App() {
       setIsCreating(true);
       const fileName = sanitizeFileName(file.name);
 
+      // Comprimir imagen antes de subir para carga ultrarrápida
+      let uploadPayload: File | Blob = file;
+      if (file.type.startsWith('image/')) {
+        uploadPayload = await compressImage(file);
+      }
+
       // 1. Subida al Bucket 'productos'
       const { error: uploadError } = await supabase.storage
         .from('productos')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, uploadPayload, { upsert: true, contentType: 'image/jpeg' });
 
       if (uploadError) throw uploadError;
 
@@ -166,7 +237,7 @@ export default function App() {
       }
       setNewProductName('');
       setNewProductCategory('');
-      alert("Producto creado exitosamente.");
+      alert("Producto creado exitosamente con imagen optimizada.");
     } catch (err: any) {
       console.error('Error al crear producto:', err);
       alert('Error al crear el producto: ' + (err.message || 'Error desconocido'));
@@ -184,35 +255,36 @@ export default function App() {
     return cumpleBusqueda && cumpleCategoria;
   });
 
+  const productosAMostrar = productosFiltrados.slice(0, visibleCount);
+
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans selection:bg-emerald-100 selection:text-emerald-900">
-      {/* Navbar Premium */}
-      <nav className="fixed top-0 inset-x-0 z-50 bg-white/70 backdrop-blur-xl border-b border-neutral-100">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200">
-              <ShoppingBag className="w-6 h-6 text-white" />
+      {/* Navbar Premium Sticky */}
+      <nav className="sticky top-0 z-50 bg-white/85 backdrop-blur-md border-b border-neutral-100/80 transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-20 flex justify-between items-center">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0">
+              <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <span className="text-xl font-black tracking-tighter text-neutral-900 uppercase">
+            <span className="text-base sm:text-xl font-black tracking-tighter text-neutral-900 uppercase">
               AGRIC<span className="text-emerald-600">OVET</span>
-              <span className="block text-[8px] font-medium tracking-widest text-neutral-400 -mt-1">Insumos de Vanguardia</span>
+              <span className="block text-[6px] sm:text-[8px] font-medium tracking-widest text-neutral-400 -mt-1">Insumos de Vanguardia</span>
             </span>
           </div>
 
-          <div className="hidden md:flex items-center gap-10 text-sm font-bold tracking-wide uppercase text-neutral-500">
-            <a href="#inicio" className="hover:text-emerald-600 transition-colors">Inicio</a>
-            <a href="#catálogo" className="hover:text-emerald-600 transition-colors">Catálogo</a>
-            <a href="#laboratorios" className="hover:text-emerald-600 transition-colors">Labs</a>
+          <div className="flex items-center gap-2 sm:gap-4 md:gap-8 text-xs sm:text-sm font-bold tracking-wide uppercase text-neutral-500">
+            <a href="#inicio" className="hover:text-emerald-600 transition-colors hidden sm:inline-block">Inicio</a>
+            <a href="#catálogo" className="hover:text-emerald-600 transition-colors hidden sm:inline-block">Catálogo</a>
             <button 
               onClick={() => setAdminMode(!adminMode)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${adminMode ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}
+              className={`flex items-center gap-2 px-2.5 py-2 sm:px-3.5 sm:py-2 rounded-xl transition-all ${adminMode ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}
               title="Panel de Administración"
             >
-              <Settings className="w-5 h-5" />
-              <span className="text-[10px] font-black uppercase tracking-widest">{adminMode ? 'Admin On' : 'Admin Off'}</span>
+              <Settings className="w-4 h-4" />
+              <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">{adminMode ? 'Admin On' : 'Admin Off'}</span>
             </button>
-            <a href="https://wa.me/573100000000" className="bg-neutral-900 text-white px-6 py-2.5 rounded-full hover:bg-emerald-600 transition-all shadow-xl shadow-neutral-200">
-              WhatsApp
+            <a href="https://wa.me/573100000000" className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 sm:px-5 sm:py-2.5 rounded-full transition-all shadow-md shadow-emerald-200 flex items-center gap-1.5 sm:gap-2">
+              <Phone className="w-4 h-4" /> <span className="hidden sm:inline">WhatsApp</span>
             </a>
           </div>
         </div>
@@ -292,43 +364,38 @@ export default function App() {
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
-        
-        {/* HERO SECTION - REFINED */}
-        <section id="inicio" className="relative py-24 md:py-40 overflow-hidden">
+        </AnimatePresence>        {/* HERO SECTION - MODERN AND CONVERSION FOCUS */}
+        <section id="inicio" className="relative py-28 md:py-40 bg-white overflow-hidden border-b border-neutral-100/60">
           {/* Decorative background elements */}
           <div className="absolute top-0 right-0 -mr-40 -mt-40 w-[600px] h-[600px] bg-emerald-50 rounded-full blur-3xl opacity-50" />
           <div className="absolute bottom-0 left-0 -ml-40 -mb-40 w-[400px] h-[400px] bg-sky-50 rounded-full blur-3xl opacity-40" />
 
           <div className="max-w-7xl mx-auto px-6 relative z-10">
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="grid lg:grid-cols-12 gap-16 items-center">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
+                className="lg:col-span-7 text-left"
               >
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-black uppercase tracking-widest mb-8">
-                  <ShieldCheck className="w-4 h-4" /> Distribuidor Oficial Premium
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest mb-8">
+                  <ShieldCheck className="w-4 h-4" /> Distribuidor Autorizado Premium
                 </div>
-                <h1 className="text-6xl md:text-8xl font-black text-neutral-900 leading-[0.95] mb-8 tracking-tighter">
-                  Salud animal <br />
-                  <span className="text-emerald-600">sin límites.</span>
+                <h1 className="text-5xl md:text-7xl font-extrabold text-neutral-900 leading-[1.05] mb-8 tracking-tighter">
+                  Insumos Veterinarios <br />
+                  y Agrícolas <br />
+                  <span className="text-emerald-600 font-black">de Alta Calidad.</span>
                 </h1>
-                <p className="text-xl text-neutral-500 mb-10 max-w-lg leading-relaxed font-medium">
-                  Abastecemos a veterinarias y productores con los insumos más avanzados del mercado global. Calidad certificada para el campo moderno.
+                <p className="text-lg md:text-xl text-neutral-500 mb-10 max-w-xl leading-relaxed font-semibold">
+                  Abastecemos con excelencia a veterinarias, clínicas, almacenes y productores. Garantizamos stock real y la asesoría de profesionales experimentados para tu campo.
                 </p>
-                <div className="flex flex-wrap gap-5">
-                  <a href="#catálogo" className="px-10 py-5 bg-emerald-600 text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:bg-emerald-700 transition-all shadow-2xl shadow-emerald-200 flex items-center gap-3">
+                <div className="flex flex-wrap gap-4">
+                  <a href="#catálogo" className="px-8 py-4.5 bg-emerald-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200/50 flex items-center gap-3">
                     Explorar Catálogo <ChevronRight className="w-4 h-4" />
                   </a>
-                  <div className="flex -space-x-3 items-center ml-4">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="w-10 h-10 rounded-full border-4 border-white bg-neutral-200 overflow-hidden">
-                        <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="User" />
-                      </div>
-                    ))}
-                    <span className="ml-6 text-xs font-bold text-neutral-400">+500 Clientes felices</span>
-                  </div>
+                  <a href="https://wa.me/573100000000" className="px-8 py-4.5 bg-neutral-900 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-neutral-800 transition-all shadow-xl flex items-center gap-3">
+                    Consulta Inmediata <MessageCircle className="w-4 h-4 text-emerald-400" />
+                  </a>
                 </div>
               </motion.div>
 
@@ -336,44 +403,43 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 1, delay: 0.2 }}
-                className="relative group"
+                className="lg:col-span-5 relative group"
               >
-                <div className="aspect-[4/5] rounded-[3rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] relative">
+                <div className="aspect-square rounded-[2.5rem] overflow-hidden shadow-[0_45px_90px_-25px_rgba(0,0,0,0.12)] relative">
                   <img 
                     src="https://images.unsplash.com/photo-1599443015574-be5fe8a05783?auto=format&fit=crop&q=80&w=1000" 
-                    alt="Clinica Veterinaria" 
-                    className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all duration-700"
+                    alt="Clínica Veterinaria Agricovet" 
+                    className="w-full h-full object-cover transition-all duration-700 ease-out"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-900/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/30 to-transparent" />
                 </div>
                 
-                {/* Float card 1 */}
+                {/* Floating details */}
                 <motion.div 
-                  animate={{ y: [0, -15, 0] }}
+                  animate={{ y: [0, -10, 0] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute top-20 -left-10 bg-white p-6 rounded-3xl shadow-2xl border border-neutral-100 flex items-center gap-5"
+                  className="absolute top-12 -left-6 bg-white/95 backdrop-blur-md p-5 rounded-2xl shadow-xl border border-neutral-100 flex items-center gap-4"
                 >
-                  <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
-                    <Zap className="w-8 h-8" />
+                  <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+                    <Zap className="w-5 h-5 flex-shrink-0" />
                   </div>
                   <div>
-                    <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">Envíos Hoy</p>
-                    <p className="text-lg font-black text-neutral-800">Entrega Express</p>
+                    <span className="block text-[8px] font-black text-neutral-400 uppercase tracking-widest">Envíos Rápidos</span>
+                    <span className="block text-sm font-black text-neutral-800">Despacho Certificado</span>
                   </div>
                 </motion.div>
 
-                {/* Float card 2 */}
                 <motion.div 
-                  animate={{ y: [0, 15, 0] }}
-                  transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                  className="absolute bottom-20 -right-10 bg-white p-6 rounded-3xl shadow-2xl border border-neutral-100 flex items-center gap-5"
+                  animate={{ y: [0, 10, 0] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                  className="absolute bottom-12 -right-6 bg-white/95 backdrop-blur-md p-5 rounded-2xl shadow-xl border border-neutral-100 flex items-center gap-4"
                 >
-                  <div className="w-14 h-14 bg-sky-50 rounded-2xl flex items-center justify-center text-sky-600">
-                    <Package className="w-8 h-8" />
+                  <div className="w-12 h-12 bg-sky-50 rounded-xl flex items-center justify-center text-sky-600">
+                    <Package className="w-5 h-5 flex-shrink-0" />
                   </div>
                   <div>
-                    <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">Stock Real</p>
-                    <p className="text-lg font-black text-neutral-800">+5,000 Insumos</p>
+                    <span className="block text-[8px] font-black text-neutral-400 uppercase tracking-widest">Almacén</span>
+                    <span className="block text-sm font-black text-neutral-800">+130 Insumos</span>
                   </div>
                 </motion.div>
               </motion.div>
@@ -381,70 +447,29 @@ export default function App() {
           </div>
         </section>
 
-        {/* COMMUNICATION CHANNELS */}
-        <section className="py-24 bg-white border-y border-neutral-100">
+        {/* CATALOG SECTION - ENHANCED USER SEARCH */}
+        <section id="catálogo" className="py-24 bg-neutral-50/60 min-h-screen border-b border-neutral-100/60">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-              <ChannelCard 
-                icon={<MessageCircle className="w-12 h-12" />}
-                title="WhatsApp Directo"
-                subtitle="Atención Profesional"
-                description="Habla con un especialista ahora mismo para asesoría técnica."
-                theme="emerald"
-                link="https://wa.me/something"
-              />
-              <ChannelCard 
-                icon={<Instagram className="w-12 h-12" />}
-                title="Comunidad IG"
-                subtitle="@agricovet_insumos"
-                description="Únete a nuestra comunidad de más de 10k seguidores."
-                theme="pink"
-                link="#"
-              />
-              <ChannelCard 
-                icon={<Facebook className="w-12 h-12" />}
-                title="Catálogo FB"
-                subtitle="Tienda Digital"
-                description="Explora nuestras promociones de temporada en Facebook."
-                theme="blue"
-                link="#"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* LAB GRID - NEW SECTION */}
-        <section id="laboratorios" className="py-24 border-b border-neutral-100">
-          <div className="max-w-7xl mx-auto px-6 text-center">
-            <p className="text-xs font-black text-emerald-600 uppercase tracking-[0.3em] mb-12">Laboratorios Aliados</p>
-            <div className="flex flex-wrap justify-between items-center gap-12 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-              {['RAINBOW', 'BIOZOO', 'WELLCO', 'TECNIAGRO', 'LAVET', 'FORAGRO'].map(lab => (
-                <span key={lab} className="text-2xl font-black text-neutral-400 hover:text-neutral-900 transition-colors cursor-default">
-                  {lab}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CATALOG SECTION - THE CORE */}
-        <section id="catálogo" className="py-32 bg-neutral-50 min-h-screen">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-10">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-16 gap-8">
               <div className="max-w-xl">
-                <h2 className="text-5xl font-black text-neutral-900 tracking-tighter mb-4">Catálogo Digital</h2>
-                <p className="text-neutral-500 font-medium leading-relaxed">
-                  Busca entre más de 136 productos especializados. Filtra por categoría o marca para encontrar exactamente lo que tu clínica o finca necesita.
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Catálogo Actualizado</span>
+                </div>
+                <h2 className="text-4xl md:text-5xl font-black text-neutral-900 tracking-tighter mb-4">Portafolio Agricovet</h2>
+                <p className="text-neutral-500 font-semibold leading-relaxed">
+                  Encuentra los medicamentos, biológicos y productos agropecuarios ideales. Utiliza el buscador y las categorías dinámicas para simplificar tu consulta.
                 </p>
               </div>
 
-              <div className="flex-1 max-w-md">
+              <div className="w-full lg:max-w-md">
+                <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-3">¿Qué producto estás buscando?</label>
                 <div className="relative group">
                   <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />
                   <input 
                     type="text" 
-                    placeholder="Inyectables, vacunas, instrumentos..."
-                    className="w-full pl-14 pr-6 py-5 bg-white border border-neutral-200 rounded-[2rem] focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all shadow-sm font-medium"
+                    placeholder="Ej. Oxitetraciclina, Iverplus, Duwest..."
+                    className="w-full pl-14 pr-6 py-4.5 bg-white border border-neutral-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all shadow-sm font-semibold"
                     value={filtro}
                     onChange={(e) => setFiltro(e.target.value)}
                   />
@@ -453,15 +478,15 @@ export default function App() {
             </div>
 
             {/* Category Filter Bar */}
-            <div className="flex gap-3 overflow-x-auto pb-10 scrollbar-hide">
+            <div className="flex gap-2.5 overflow-x-auto pb-10 scrollbar-hide">
               {categorias.map(cat => (
                 <button
                   key={cat}
                   onClick={() => setCategoriaActiva(cat)}
-                  className={`flex-shrink-0 px-8 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                  className={`flex-shrink-0 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
                     categoriaActiva === cat 
-                    ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-200 scale-105' 
-                    : 'bg-white text-neutral-400 hover:text-neutral-900 border border-neutral-100'
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50 scale-[1.03]' 
+                    : 'bg-white text-neutral-400 hover:text-neutral-900 border border-neutral-100 hover:border-neutral-200'
                   }`}
                 >
                   {cat}
@@ -471,24 +496,21 @@ export default function App() {
 
             {/* Results Status */}
             {loading ? (
-              <div className="py-40 flex flex-col items-center justify-center space-y-6">
-                <Loader2 className="w-16 h-16 text-emerald-600 animate-spin" />
-                <p className="text-neutral-400 font-black uppercase tracking-[0.2em] text-xs">Accediendo a la nube Agricovet...</p>
-              </div>
+              <CatalogSkeleton />
             ) : error ? (
-              <div className="bg-white p-20 rounded-[3rem] text-center border-2 border-red-50 shadow-2xl">
-                <AlertCircle className="w-20 h-20 text-red-100 mx-auto mb-6" />
-                <p className="text-2xl font-black text-neutral-900 mb-2">Error de Sincronización</p>
-                <p className="text-neutral-400 mb-8">{error}</p>
-                <button onClick={fetchProductos} className="px-10 py-4 bg-neutral-900 text-white font-bold rounded-2xl hover:bg-emerald-600 transition-all">
-                  Reintentar Conexión
+              <div className="bg-white p-16 rounded-3xl text-center border border-red-100 shadow-xl max-w-xl mx-auto">
+                <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-5" />
+                <p className="text-xl font-black text-neutral-900 mb-2">Error de Conexión</p>
+                <p className="text-neutral-400 font-medium mb-6">{error}</p>
+                <button onClick={fetchProductos} className="px-8 py-3.5 bg-neutral-900 hover:bg-emerald-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all">
+                  Reintentar Sincronización
                 </button>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-8">
                   <AnimatePresence mode="popLayout">
-                    {productosFiltrados.map((p, idx) => (
+                    {productosAMostrar.map((p, idx) => (
                       <ProductCard 
                         key={p.Identificación} 
                         producto={p} 
@@ -500,16 +522,36 @@ export default function App() {
                     ))}
                   </AnimatePresence>
                 </div>
+
+                {productosFiltrados.length > visibleCount && (
+                  <div className="mt-16 flex flex-col items-center justify-center space-y-4">
+                    <p className="text-[10px] font-black uppercase text-neutral-400 tracking-widest">
+                      Mostrando {Math.min(visibleCount, productosFiltrados.length)} de {productosFiltrados.length} productos
+                    </p>
+                    <div className="w-48 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-emerald-600 transition-all duration-500"
+                        style={{ width: `${(Math.min(visibleCount, productosFiltrados.length) / productosFiltrados.length) * 100}%` }}
+                      />
+                    </div>
+                    <button
+                      onClick={() => setVisibleCount(prev => prev + 12)}
+                      className="mt-4 px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:scale-[1.03] shadow-lg shadow-emerald-200 transition-all flex items-center gap-2"
+                    >
+                      Cargar más productos <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
                 
                 {productosFiltrados.length === 0 && (
                   <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="py-40 text-center bg-white rounded-[3rem] border border-dashed border-neutral-200"
+                    className="py-24 text-center bg-white rounded-[2rem] border border-dashed border-neutral-200 shadow-xs"
                   >
-                    <Package className="w-24 h-24 text-neutral-100 mx-auto mb-6" />
-                    <p className="text-xl font-bold text-neutral-400">No encontramos coincidencias para "{filtro}"</p>
-                    <button onClick={() => {setFiltro(''); setCategoriaActiva('Todos');}} className="mt-6 text-emerald-600 font-bold hover:underline">Limpiar filtros</button>
+                    <Package className="w-16 h-16 text-neutral-200 mx-auto mb-4" />
+                    <p className="text-lg font-bold text-neutral-400 mb-2">No encontramos registros para "{filtro}"</p>
+                    <button onClick={() => {setFiltro(''); setCategoriaActiva('Todos');}} className="text-emerald-600 font-extrabold text-sm hover:underline">Limpiar filtros de búsqueda</button>
                   </motion.div>
                 )}
               </>
@@ -517,47 +559,98 @@ export default function App() {
           </div>
         </section>
 
-        {/* SECTION CONTACT / CTA */}
-        <section id="contacto" className="py-32 bg-white overflow-hidden">
+        {/* LAB GRID - MOVED DOWN FOR REDIRECT FLOW */}
+        <section id="laboratorios" className="py-20 bg-white border-b border-neutral-100/60">
+          <div className="max-w-7xl mx-auto px-6 text-center">
+            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] mb-12">Principales Laboratorios y Marcas Aliadas</p>
+            <div className="flex flex-wrap justify-center items-center gap-10 md:gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+              {['RAINBOW', 'BIOZOO', 'WELLCO', 'TECNIAGRO', 'LAVET', 'FORAGRO'].map(lab => (
+                <span key={lab} className="text-xl md:text-2xl font-black text-neutral-400 hover:text-neutral-900 transition-colors cursor-default tracking-wider">
+                  {lab}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CANALES DE COMUNICACIÓN */}
+        <section className="py-24 bg-neutral-50/40 border-b border-neutral-100/60">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="bg-neutral-900 rounded-[4rem] p-12 md:p-24 relative overflow-hidden">
+            <div className="text-center max-w-2xl mx-auto mb-16">
+              <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] block mb-3">Atención Inmediata</span>
+              <h2 className="text-3xl md:text-4xl font-black text-neutral-900 tracking-tight">Vías de Contacto Directo</h2>
+              <p className="text-neutral-500 font-semibold mt-2">¿Necesitas una cotización formal o resolver dudas con expertos en dosificación animal?</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <ChannelCard 
+                icon={<MessageCircle className="w-10 h-10" />}
+                title="WhatsApp Directo"
+                subtitle="Atención Profesional"
+                description="Habla con un especialista ahora mismo para asesoría técnica."
+                theme="emerald"
+                link="https://wa.me/573100000000"
+              />
+              <ChannelCard 
+                icon={<Instagram className="w-10 h-10" />}
+                title="Comunidad IG"
+                subtitle="@agricovet_insumos"
+                description="Únete a nuestra comunidad de más de 10k seguidores."
+                theme="pink"
+                link="#"
+              />
+              <ChannelCard 
+                icon={<Facebook className="w-10 h-10" />}
+                title="Catálogo FB"
+                subtitle="Tienda Digital"
+                description="Explora nuestras promociones de temporada en Facebook."
+                theme="blue"
+                link="#"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION CONTACT / CTA */}
+        <section id="contacto" className="py-16 sm:py-32 bg-white overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="bg-neutral-900 rounded-3xl sm:rounded-[4rem] p-6 sm:p-12 md:p-24 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-600/20 rounded-full blur-[120px] -mr-40 -mt-40" />
               
-              <div className="grid lg:grid-cols-2 gap-24 items-center relative z-10">
+              <div className="grid lg:grid-cols-2 gap-12 lg:gap-24 items-center relative z-10">
                 <div className="text-white">
-                  <h2 className="text-5xl md:text-7xl font-black tracking-tighter leading-none mb-10">
+                  <h2 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter leading-tight sm:leading-none mb-6 sm:mb-10">
                     ¿Hablamos <br />
                     de tu <span className="text-emerald-500">finca?</span>
                   </h2>
-                  <p className="text-neutral-400 text-xl mb-12 leading-relaxed font-medium">
+                  <p className="text-neutral-400 text-base sm:text-xl mb-8 sm:mb-12 leading-relaxed font-semibold">
                     Asesoría personalizada sobre dosificación, nuevos laboratorios o pedidos a volumen. Estamos listos para potenciar tu productividad.
                   </p>
                   
-                  <div className="space-y-10">
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 bg-neutral-800 rounded-3xl flex items-center justify-center text-emerald-500 shrink-0">
-                        <Phone className="w-7 h-7" />
+                  <div className="space-y-6 sm:space-y-10">
+                    <div className="flex items-center gap-4 sm:gap-6">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-neutral-800 rounded-2xl sm:rounded-3xl flex items-center justify-center text-emerald-500 shrink-0">
+                        <Phone className="w-5 h-5 sm:w-7 sm:h-7" />
                       </div>
                       <div>
                         <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">Central de Pedidos</p>
-                        <p className="text-2xl font-black">+57 (310) 999 0000</p>
+                        <p className="text-lg sm:text-2xl font-black">+57 (310) 999 0000</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 bg-neutral-800 rounded-3xl flex items-center justify-center text-sky-500 shrink-0">
-                        <Mail className="w-7 h-7" />
+                    <div className="flex items-center gap-4 sm:gap-6">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-neutral-800 rounded-2xl sm:rounded-3xl flex items-center justify-center text-sky-500 shrink-0">
+                        <Mail className="w-5 h-5 sm:w-7 sm:h-7" />
                       </div>
                       <div>
                         <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">Escríbenos</p>
-                        <p className="text-2xl font-black">ventas@agricovet.com</p>
+                        <p className="text-lg sm:text-2xl font-black">ventas@agricovet.com</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[3rem] shadow-2xl">
+                <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-5 sm:p-10 rounded-2xl sm:rounded-[3rem] shadow-2xl">
                    <form 
-                    className="space-y-6" 
+                    className="space-y-4 sm:space-y-6" 
                     onSubmit={(e) => {
                       e.preventDefault();
                       const form = e.target as any;
@@ -566,15 +659,15 @@ export default function App() {
                     }}
                   >
                     <div>
-                      <input name="name" type="text" placeholder="Nombre completo" required className="w-full px-8 py-5 bg-white/5 border border-white/10 rounded-2xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-white font-medium" />
+                      <input name="name" type="text" placeholder="Nombre completo" required className="w-full px-4 sm:px-8 py-3.5 sm:py-5 bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-white text-sm sm:text-base font-medium" />
                     </div>
                     <div>
-                      <input name="email" type="email" placeholder="Correo electrónico" required className="w-full px-8 py-5 bg-white/5 border border-white/10 rounded-2xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-white font-medium" />
+                      <input name="email" type="email" placeholder="Correo electrónico" required className="w-full px-4 sm:px-8 py-3.5 sm:py-5 bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-white text-sm sm:text-base font-medium" />
                     </div>
                     <div>
-                      <textarea name="message" rows={4} placeholder="¿Qué insumos necesitas hoy?" required className="w-full px-8 py-5 bg-white/5 border border-white/10 rounded-2xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-white font-medium resize-none"></textarea>
+                      <textarea name="message" rows={3} placeholder="¿Qué insumos necesitas hoy?" required className="w-full px-4 sm:px-8 py-3.5 sm:py-5 bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-white text-sm sm:text-base font-medium resize-none"></textarea>
                     </div>
-                    <button type="submit" className="w-full py-6 bg-emerald-600 text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:bg-emerald-500 transition-all shadow-2xl shadow-emerald-900/40 flex items-center justify-center gap-3 group">
+                    <button type="submit" className="w-full py-4 sm:py-6 bg-emerald-600 text-white font-black text-xs sm:text-sm uppercase tracking-widest rounded-xl sm:rounded-2xl hover:bg-emerald-500 transition-all shadow-2xl shadow-emerald-900/40 flex items-center justify-center gap-2 sm:gap-3 group">
                       Iniciar Conversación <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                     </button>
                   </form>
@@ -604,6 +697,30 @@ export default function App() {
 }
 
 // SUB-COMPONENTS
+function CatalogSkeleton() {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-8 animate-pulse">
+      {Array.from({ length: 8 }).map((_, idx) => (
+        <div key={idx} className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-neutral-100 overflow-hidden shadow-sm p-4 sm:p-8 space-y-4 sm:space-y-6">
+          <div className="aspect-square w-full bg-neutral-100/80 rounded-2xl" />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-4 w-12 bg-neutral-100/80 rounded" />
+            <div className="h-3 w-10 bg-neutral-100/50 rounded" />
+          </div>
+          <div className="space-y-1.5">
+            <div className="h-3.5 w-11/12 bg-neutral-100/80 rounded" />
+            <div className="h-3.5 w-2/3 bg-neutral-100/80 rounded animate-pulse" />
+          </div>
+          <div className="pt-2 sm:pt-4 border-t border-neutral-50 flex items-center justify-between">
+            <div className="h-3 w-10 bg-neutral-100/80 rounded" />
+            <div className="h-8 w-16 bg-neutral-100/80 rounded-xl animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ChannelCard({ icon, title, subtitle, description, theme, link }: { icon: ReactNode, title: string, subtitle: string, description: string, theme: string, link: string }) {
   const themes: any = {
     emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white',
@@ -639,6 +756,7 @@ function ProductCard({ producto, index, adminMode, isUploading, onImageChange }:
   key?: any
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const stockLimit = 5;
   const isBajoPedido = typeof producto.Existencias === 'string' && producto.Existencias.toLowerCase().includes('pedido') || (typeof producto.Existencias === 'number' && producto.Existencias < stockLimit);
   
@@ -649,54 +767,61 @@ function ProductCard({ producto, index, adminMode, isUploading, onImageChange }:
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.6, delay: (index % 4) * 0.1 }}
-      className="bg-white rounded-[2.5rem] border border-neutral-100 overflow-hidden shadow-sm hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] hover:border-emerald-100 transition-all group flex flex-col h-full relative"
+      className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-neutral-100 overflow-hidden shadow-sm hover:shadow-[0_45px_90px_-25px_rgba(0,0,0,0.12)] hover:border-emerald-100 transition-all group flex flex-col h-full relative"
     >
       {/* Product Image Stage */}
-      <div className="relative aspect-square overflow-hidden bg-neutral-50 group/img">
+      <div className="relative aspect-square overflow-hidden bg-neutral-100/50 group/img">
+        {/* Shimmer skeleton behind the image */}
+        {(!producto.imagen_url && !producto.Imagen) ? null : (
+          <div className={`absolute inset-0 bg-neutral-100 animate-pulse transition-opacity duration-300 ${imageLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100'}`} />
+        )}
+
         {(!producto.imagen_url && !producto.Imagen) && adminMode ? (
           <div 
             onClick={() => fileInputRef.current?.click()}
-            className="w-full h-full flex flex-col items-center justify-center bg-neutral-100 border-2 border-dashed border-neutral-200 group-hover:bg-neutral-200 transition-colors cursor-pointer"
+            className="w-full h-full flex flex-col items-center justify-center bg-neutral-100 border-2 border-dashed border-neutral-200 group-hover:bg-neutral-200 transition-colors cursor-pointer p-4"
           >
-            <ImageIcon className="w-12 h-12 text-neutral-300 mb-2" />
-            <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Sin Imagen</span>
-            <span className="text-[8px] text-neutral-400 mt-1">Haz clic para subir</span>
+            <ImageIcon className="w-8 h-8 sm:w-12 sm:h-12 text-neutral-300 mb-1.5" />
+            <span className="text-[8px] sm:text-[10px] font-black text-neutral-400 uppercase tracking-widest text-center">Sin Imagen</span>
+            <span className="text-[6px] sm:text-[8px] text-neutral-400 mt-1 text-center">Haz clic para subir</span>
           </div>
         ) : (
           <img 
             src={producto.imagen_url || producto.Imagen || "https://images.unsplash.com/photo-1614850715649-1d0106293bd1?auto=format&fit=crop&q=80&w=600"} 
             alt={producto.Nombre}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+            className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-700 ease-out ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
             loading="lazy"
+            decoding="async"
+            onLoad={() => setImageLoaded(true)}
           />
         )}
         
         {/* Badges stage */}
-        <div className="absolute inset-x-4 top-4 flex justify-between items-start">
+        <div className="absolute inset-x-3 sm:inset-x-4 top-3 sm:top-4 flex justify-between items-start">
           {producto.resaltado && (
-            <div className="bg-neutral-900 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-2xl">
-              Focus Product
+            <div className="bg-neutral-900 text-white text-[7px] sm:text-[9px] font-black uppercase tracking-widest px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full shadow-lg">
+              Destacado
             </div>
           )}
         </div>
-
+ 
         {/* Admin Image Control Overlay */}
         {adminMode && (
-          <div className="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm opacity-0 group-hover/img:opacity-100 transition-opacity flex flex-col items-center justify-center gap-4 text-center p-6">
+          <div className="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm opacity-0 group-hover/img:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 sm:gap-4 text-center p-4 sm:p-6">
             {isUploading ? (
               <>
-                <Loader2 className="w-12 h-12 text-emerald-400 animate-spin" />
-                <p className="text-white font-black uppercase tracking-widest text-xs">Sincronizando Cloud...</p>
+                <Loader2 className="w-8 h-8 sm:w-12 sm:h-12 text-emerald-400 animate-spin" />
+                <p className="text-white font-black uppercase tracking-widest text-[8px] sm:text-xs">Sincronizando Cloud...</p>
               </>
             ) : (
               <>
                 <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-neutral-900 cursor-pointer hover:scale-110 transition-transform shadow-xl"
+                  className="w-10 h-10 sm:w-16 sm:h-16 bg-white rounded-xl sm:rounded-2xl flex items-center justify-center text-neutral-900 cursor-pointer hover:scale-110 transition-transform shadow-xl"
                 >
-                  <Upload className="w-8 h-8" />
+                  <Upload className="w-5 h-5 sm:w-8 sm:h-8" />
                 </div>
-                <p className="text-white font-black uppercase tracking-widest text-[10px]">Actualizar en Supabase</p>
+                <p className="text-white font-black uppercase tracking-widest text-[8px] sm:text-[10px]">Actualizar en Supabase</p>
                 <input 
                   type="file" 
                   className="hidden" 
@@ -711,39 +836,39 @@ function ProductCard({ producto, index, adminMode, isUploading, onImageChange }:
       </div>
       
       {/* Product Content Stage */}
-      <div className="p-8 flex flex-col flex-grow">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg uppercase tracking-widest">
+      <div className="p-4 sm:p-8 flex flex-col flex-grow">
+        <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-4">
+          <span className="text-[8px] sm:text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg uppercase tracking-[0.1em] sm:tracking-widest truncate max-w-[85px] sm:max-w-none">
             {producto.Categoría}
           </span>
-          <span className="text-[9px] text-neutral-300 font-mono font-bold tracking-tighter">
-            PROD_ID_{producto.Identificación}
+          <span className="text-[7px] sm:text-[9px] text-neutral-300 font-mono font-bold tracking-tighter">
+            ID_{producto.Identificación}
           </span>
         </div>
         
-        <h3 className="text-xl font-black text-neutral-900 mb-6 group-hover:text-emerald-700 transition-colors leading-tight line-clamp-2">
+        <h3 className="text-xs sm:text-lg font-extrabold sm:font-black text-neutral-900 mb-3 sm:mb-6 group-hover:text-emerald-700 transition-colors leading-tight line-clamp-2 h-8 sm:h-auto overflow-hidden">
           {producto.Nombre}
         </h3>
         
-        <div className="mt-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <div className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] ${isBajoPedido ? 'text-orange-500' : 'text-emerald-500'}`}>
-              <div className={`w-2 h-2 rounded-full ${isBajoPedido ? 'bg-orange-500' : 'bg-emerald-500'} animate-pulse`} />
-              {isBajoPedido ? 'Bajo Pedido' : 'En Existencia'}
+        <div className="mt-auto space-y-3 sm:space-y-6">
+          <div className="flex items-center justify-between gap-1.5">
+            <div className={`flex items-center gap-1 sm:gap-2 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.15em] ${isBajoPedido ? 'text-orange-500' : 'text-emerald-500'}`}>
+              <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isBajoPedido ? 'bg-orange-500' : 'bg-emerald-500'} animate-pulse`} />
+              <span className="truncate">{isBajoPedido ? 'Pedir' : 'Stock'}</span>
             </div>
             
             {producto.Precio && (
-              <span className="text-xl font-black text-neutral-900 tracking-tighter">
+              <span className="text-sm sm:text-xl font-black text-neutral-900 tracking-tighter">
                 ${producto.Precio}
               </span>
             )}
           </div>
-
+ 
           <button 
             onClick={() => window.open(`https://wa.me/573109990000?text=${encodeURIComponent(`¡Hola! Quisiera info sobre el producto: ${producto.Nombre} (Ref: ${producto.Identificación})`)}`)}
-            className="w-full py-4 bg-neutral-50 text-neutral-400 font-black text-[10px] uppercase tracking-[0.2em] rounded-xl hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2"
+            className="w-full py-2.5 sm:py-4 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white font-black text-[8px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-1.5"
           >
-            Consultar <MessageCircle className="w-3 h-3" />
+            <span>Consultar</span> <MessageCircle className="w-3 h-3" />
           </button>
         </div>
       </div>
