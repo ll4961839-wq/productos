@@ -59,8 +59,44 @@ export default function App() {
   const [newProductCategory, setNewProductCategory] = useState('');
   const [visibleCount, setVisibleCount] = useState(12);
 
+  // Guatemala random WhatsApp configuration and social links
+  const emailVal = 'Agricovetsa@gmail.com';
+  const instagramUrl = 'https://www.instagram.com/agricovetsa?igsh=eDdtNHdicjAyaTQ4';
+  const facebookUrl = 'https://www.facebook.com/share/18CEGyvSuv/';
+
+  // All WhatsApp numbers for load-balancing
+  const WHATSAPP_NUMBERS = [
+    { raw: '50254743595', display: '+502 5474 3595' },
+    { raw: '50241323037', display: '+502 4132 3037' }
+  ];
+
+  // Pick a random WhatsApp number at the instant of user click to distribute traffic
+  const handleWhatsAppRedirect = (customText?: string) => {
+    const chosen = WHATSAPP_NUMBERS[Math.floor(Math.random() * WHATSAPP_NUMBERS.length)];
+    const url = customText 
+      ? `https://wa.me/${chosen.raw}?text=${encodeURIComponent(customText)}`
+      : `https://wa.me/${chosen.raw}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleProductInquiry = (nombre: string, id: string | number) => {
+    handleWhatsAppRedirect(`¡Hola! Quisiera info sobre el producto: ${nombre} (Ref: ${id})`);
+  };
+
+  // Modal display controllers for Terms & Privacy
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+
   useEffect(() => {
     fetchProductos();
+
+    // Check URL parameters for premium secret admin activation e.g., ?admin=true
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('admin') === 'true') {
+        setAdminMode(true);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -263,29 +299,37 @@ export default function App() {
       <nav className="sticky top-0 z-50 bg-white/85 backdrop-blur-md border-b border-neutral-100/80 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 h-20 flex justify-between items-center">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0">
-              <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            <img 
+              src="/agricovet.png" 
+              alt="Agricovet Logo" 
+              className="h-9 sm:h-11 w-auto object-contain cursor-pointer" 
+              onError={(e) => {
+                // If agricovet.png is not found, fallback to elegant text logo
+                e.currentTarget.style.display = 'none';
+                const fallback = document.getElementById('navbar-text-logo-fallback');
+                if (fallback) fallback.classList.remove('hidden');
+              }}
+            />
+            <div id="navbar-text-logo-fallback" className="hidden flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0">
+                <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <span className="text-base sm:text-xl font-black tracking-tighter text-neutral-900 uppercase">
+                AGRIC<span className="text-emerald-600">OVET</span>
+                <span className="block text-[6px] sm:text-[8px] font-medium tracking-widest text-neutral-400 -mt-1">Insumos de Vanguardia</span>
+              </span>
             </div>
-            <span className="text-base sm:text-xl font-black tracking-tighter text-neutral-900 uppercase">
-              AGRIC<span className="text-emerald-600">OVET</span>
-              <span className="block text-[6px] sm:text-[8px] font-medium tracking-widest text-neutral-400 -mt-1">Insumos de Vanguardia</span>
-            </span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 md:gap-8 text-xs sm:text-sm font-bold tracking-wide uppercase text-neutral-500">
             <a href="#inicio" className="hover:text-emerald-600 transition-colors hidden sm:inline-block">Inicio</a>
             <a href="#catálogo" className="hover:text-emerald-600 transition-colors hidden sm:inline-block">Catálogo</a>
             <button 
-              onClick={() => setAdminMode(!adminMode)}
-              className={`flex items-center gap-2 px-2.5 py-2 sm:px-3.5 sm:py-2 rounded-xl transition-all ${adminMode ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}
-              title="Panel de Administración"
+              onClick={() => handleWhatsAppRedirect()}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 sm:px-5 sm:py-2.5 rounded-full transition-all shadow-md shadow-emerald-100 flex items-center gap-1.5 sm:gap-2 font-black cursor-pointer border-none"
             >
-              <Settings className="w-4 h-4" />
-              <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">{adminMode ? 'Admin On' : 'Admin Off'}</span>
-            </button>
-            <a href="https://wa.me/573100000000" className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 sm:px-5 sm:py-2.5 rounded-full transition-all shadow-md shadow-emerald-200 flex items-center gap-1.5 sm:gap-2">
               <Phone className="w-4 h-4" /> <span className="hidden sm:inline">WhatsApp</span>
-            </a>
+            </button>
           </div>
         </div>
       </nav>
@@ -393,9 +437,12 @@ export default function App() {
                   <a href="#catálogo" className="px-8 py-4.5 bg-emerald-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200/50 flex items-center gap-3">
                     Explorar Catálogo <ChevronRight className="w-4 h-4" />
                   </a>
-                  <a href="https://wa.me/573100000000" className="px-8 py-4.5 bg-neutral-900 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-neutral-800 transition-all shadow-xl flex items-center gap-3">
+                  <button 
+                    onClick={() => handleWhatsAppRedirect('Hola Agricovet, me gustaría recibir más información u obtener una asesoría general.')}
+                    className="px-8 py-4.5 bg-neutral-900 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-neutral-800 transition-all shadow-xl flex items-center gap-3 cursor-pointer border-none"
+                  >
                     Consulta Inmediata <MessageCircle className="w-4 h-4 text-emerald-400" />
-                  </a>
+                  </button>
                 </div>
               </motion.div>
 
@@ -518,6 +565,7 @@ export default function App() {
                         adminMode={adminMode}
                         isUploading={uploading === `${p.Identificación}`}
                         onImageChange={handleImageUpload}
+                        onInquiry={handleProductInquiry}
                       />
                     ))}
                   </AnimatePresence>
@@ -579,32 +627,32 @@ export default function App() {
             <div className="text-center max-w-2xl mx-auto mb-16">
               <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] block mb-3">Atención Inmediata</span>
               <h2 className="text-3xl md:text-4xl font-black text-neutral-900 tracking-tight">Vías de Contacto Directo</h2>
-              <p className="text-neutral-500 font-semibold mt-2">¿Necesitas una cotización formal o resolver dudas con expertos en dosificación animal?</p>
+              <p className="text-neutral-500 font-semibold mt-2">¿Necesitas una cotización formal o tienes dudas sobre insumos para tu campo?</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <ChannelCard 
                 icon={<MessageCircle className="w-10 h-10" />}
                 title="WhatsApp Directo"
-                subtitle="Atención Profesional"
-                description="Habla con un especialista ahora mismo para asesoría técnica."
+                subtitle="Atención Ejecutiva"
+                description="Conéctate instantáneamente con un ejecutivo de guardia para asesoría o pedidos inmediatos."
                 theme="emerald"
-                link="https://wa.me/573100000000"
+                onClick={() => handleWhatsAppRedirect()}
               />
               <ChannelCard 
                 icon={<Instagram className="w-10 h-10" />}
                 title="Comunidad IG"
-                subtitle="@agricovet_insumos"
-                description="Únete a nuestra comunidad de más de 10k seguidores."
+                subtitle="@agricovetsa"
+                description="Únete a nuestro perfil de Instagram de Agricovet para contenido continuo y novedades."
                 theme="pink"
-                link="#"
+                link={instagramUrl}
               />
               <ChannelCard 
                 icon={<Facebook className="w-10 h-10" />}
                 title="Catálogo FB"
-                subtitle="Tienda Digital"
-                description="Explora nuestras promociones de temporada en Facebook."
+                subtitle="Página Oficial"
+                description="Explora nuestras publicaciones y conecta con nosotros en Facebook."
                 theme="blue"
-                link="#"
+                link={facebookUrl}
               />
             </div>
           </div>
@@ -627,13 +675,24 @@ export default function App() {
                   </p>
                   
                   <div className="space-y-6 sm:space-y-10">
-                    <div className="flex items-center gap-4 sm:gap-6">
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-neutral-800 rounded-2xl sm:rounded-3xl flex items-center justify-center text-emerald-500 shrink-0">
+                    <div className="flex items-start gap-4 sm:gap-6">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-neutral-800 rounded-2xl sm:rounded-3xl flex items-center justify-center text-emerald-500 shrink-0 mt-1">
                         <Phone className="w-5 h-5 sm:w-7 sm:h-7" />
                       </div>
                       <div>
-                        <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">Central de Pedidos</p>
-                        <p className="text-lg sm:text-2xl font-black">+57 (310) 999 0000</p>
+                        <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2">Central de Pedidos o Consultas</p>
+                        <div className="space-y-1.5 sm:space-y-3">
+                          <p className="text-base sm:text-2xl font-black">
+                            <a href="https://wa.me/50254743595" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors flex items-center gap-2">
+                              +502 5474 3595 <span className="text-[8px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-bold tracking-widest uppercase">Línea 1</span>
+                            </a>
+                          </p>
+                          <p className="text-base sm:text-2xl font-black">
+                            <a href="https://wa.me/50241323037" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors flex items-center gap-2">
+                              +502 4132 3037 <span className="text-[8px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-bold tracking-widest uppercase">Línea 2</span>
+                            </a>
+                          </p>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 sm:gap-6">
@@ -642,7 +701,11 @@ export default function App() {
                       </div>
                       <div>
                         <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">Escríbenos</p>
-                        <p className="text-lg sm:text-2xl font-black">ventas@agricovet.com</p>
+                        <p className="text-lg sm:text-2xl font-black">
+                          <a href={`mailto:${emailVal}`} className="hover:text-sky-400 transition-colors">
+                            {emailVal}
+                          </a>
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -655,7 +718,7 @@ export default function App() {
                       e.preventDefault();
                       const form = e.target as any;
                       const msg = `Hola Agricovet, soy ${form.name.value}. Busco información sobre: ${form.message.value}`;
-                      window.open(`https://wa.me/573109990000?text=${encodeURIComponent(msg)}`);
+                      handleWhatsAppRedirect(msg);
                     }}
                   >
                     <div>
@@ -680,18 +743,155 @@ export default function App() {
       </main>
 
       {/* FOOTER */}
-      <footer className="py-20 bg-neutral-950 text-neutral-500 border-t border-neutral-900">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <div className="flex items-center justify-center gap-4 mb-16 opacity-50 grayscale">
-            <div className="w-8 h-8 bg-neutral-800 rounded-lg flex items-center justify-center">
-              <ShoppingBag className="w-5 h-5 text-neutral-400" />
+      <footer className="py-20 bg-neutral-950 text-neutral-400 border-t border-neutral-900 relative z-20">
+        <div className="max-w-7xl mx-auto px-6 text-center space-y-12">
+          {/* Logo Brand with dynamic fallback */}
+          <div className="flex flex-col items-center justify-center">
+            <img 
+              src="/agricovet.png" 
+              alt="Agricovet Logo" 
+              className="h-10 sm:h-12 w-auto object-contain mb-2" 
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                const fallback = document.getElementById('footer-text-logo-fallback');
+                if (fallback) fallback.classList.remove('hidden');
+              }}
+            />
+            <div id="footer-text-logo-fallback" className="hidden flex items-center justify-center gap-3">
+              <div className="w-8 h-8 bg-neutral-800 rounded-lg flex items-center justify-center">
+                <ShoppingBag className="w-5 h-5 text-neutral-400" />
+              </div>
+              <span className="text-sm font-black tracking-widest uppercase text-white">Agricovet Insumos</span>
             </div>
-            <span className="text-sm font-black tracking-widest uppercase">Agricovet Insumos</span>
+            <p className="text-[10px] text-neutral-600 tracking-wider">Insumos de Vanguardia</p>
           </div>
-          <p className="text-xs font-bold uppercase tracking-[0.4em] mb-4">Hecho para el campo moderno</p>
-          <p className="text-[10px] text-neutral-700">© 2024 Agricovet Ltda. Salud Animal e Insumos Premium.</p>
+
+          {/* Social Links Panel */}
+          <div className="flex flex-wrap justify-center items-center gap-6">
+            <button 
+              onClick={() => handleWhatsAppRedirect()}
+              className="w-12 h-12 bg-neutral-900 hover:bg-emerald-600 hover:text-white rounded-full flex items-center justify-center text-emerald-500 transition-all shadow-md border-none cursor-pointer"
+              title="Contactar por WhatsApp"
+            >
+              <Phone className="w-5 h-5" />
+            </button>
+            <a 
+              href={instagramUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="w-12 h-12 bg-neutral-900 hover:bg-pink-600 hover:text-white rounded-full flex items-center justify-center text-pink-500 transition-all shadow-md"
+              title="Seguir en Instagram"
+            >
+              <Instagram className="w-5 h-5" />
+            </a>
+            <a 
+              href={facebookUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="w-12 h-12 bg-neutral-900 hover:bg-blue-600 hover:text-white rounded-full flex items-center justify-center text-blue-500 transition-all shadow-md"
+              title="Visitar en Facebook"
+            >
+              <Facebook className="w-5 h-5" />
+            </a>
+          </div>
+
+          {/* Terms and Privacy Triggers */}
+          <div className="flex flex-wrap justify-center items-center gap-8 text-xs font-bold uppercase tracking-widest text-neutral-500">
+            <button 
+              onClick={() => setShowTerms(true)} 
+              className="hover:text-emerald-500 transition-colors cursor-pointer"
+            >
+              Términos y Condiciones
+            </button>
+            <span className="text-neutral-800 hidden sm:inline">•</span>
+            <button 
+              onClick={() => setShowPrivacy(true)} 
+              className="hover:text-emerald-500 transition-colors cursor-pointer"
+            >
+              Política de Privacidad
+            </button>
+          </div>
+
+          <div className="border-t border-neutral-900/40 pt-10 text-center space-y-4">
+            <p className="text-xs font-bold uppercase tracking-[0.4em] text-neutral-600">Hecho para el campo moderno</p>
+            <p className="text-[10px] text-neutral-700">© 2026 Agricovet Ltda. Salud Animal e Insumos Premium.</p>
+          </div>
         </div>
       </footer>
+
+      {/* LEGAL MODALS */}
+      <Modal isOpen={showTerms} onClose={() => setShowTerms(false)} title="Términos y Condiciones">
+        <div className="space-y-6">
+          <div>
+            <h4 className="font-black text-neutral-950 uppercase text-xs tracking-widest mb-2">1. Aceptación de los Términos</h4>
+            <p>Al acceder, navegar o utilizar la plataforma web de Agricovet, usted acepta quedar vinculado por los presentes Términos y Condiciones, así como por todas las leyes y regulaciones aplicables. Si no está de acuerdo con alguno de estos términos, tiene prohibido utilizar este sitio.</p>
+          </div>
+          <div>
+            <h4 className="font-black text-neutral-950 uppercase text-xs tracking-widest mb-2">2. Uso de Productos Veterinarios y Agrícolas</h4>
+            <p>Los productos listados en nuestro catálogo digital son únicamente de carácter informativo y con fines de pre-pedido o cotización profesional. La prescripción, dosificación y aplicación de medicamentos veterinarios e insumos agrícolas de alto grado deben realizarse estrictamente bajo la supervisión de un médico veterinario zootecnista colegiado o un agrónomo certificado.</p>
+          </div>
+          <div>
+            <h4 className="font-black text-neutral-950 uppercase text-xs tracking-widest mb-2">3. Proceso de Pedidos y Cotizaciones</h4>
+            <p>Agricovet opera como canal directo de consultas comerciales vinculadas a WhatsApp. Las especificaciones de stock, marcas aliadas y precios están sujetas a fluctuaciones del mercado y confirmación expresa de nuestra parte al momento de consolidar la comunicación directa.</p>
+          </div>
+          <div>
+            <h4 className="font-black text-neutral-950 uppercase text-xs tracking-widest mb-2">4. Limitación de Responsabilidad</h4>
+            <p>En ningún caso Agricovet será responsable por el uso inadecuado de las sustancias químicas o medicamentos veterinarios adquiridos por el cliente, ni por las pérdidas productivas o daños a la fauna/cultivos resultantes de aplicaciones erróneas.</p>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={showPrivacy} onClose={() => setShowPrivacy(false)} title="Política de Privacidad">
+        <div className="space-y-6">
+          <div>
+            <h4 className="font-black text-neutral-950 uppercase text-xs tracking-widest mb-2">1. Tratamiento de Datos Personales</h4>
+            <p>En Agricovet respetamos profundamente su privacidad. Los datos suministrados voluntariamente en nuestros formularios de contacto (tales como nombre, dirección de correo electrónico y mensajes informativos) son encriptados de extremo a extremo y procesados con el único fin de proveer una atención al cliente premium y gestionar la logística de sus pedidos agrícolas.</p>
+          </div>
+          <div>
+            <h4 className="font-black text-neutral-950 uppercase text-xs tracking-widest mb-2">2. Enlaces a Terceros e iFrames</h4>
+            <p>Nuestra plataforma puede integrar flujos directos a plataformas como WhatsApp, Facebook e Instagram para facilitar la comunicación constante. Agricovet no almacena conversaciones ni historiales de mensajes fuera de los canales autorizados para la debida atención comercial.</p>
+          </div>
+          <div>
+            <h4 className="font-black text-neutral-950 uppercase text-xs tracking-widest mb-2">3. Derechos del Usuario</h4>
+            <p>Usted conserva en todo momento el pleno derecho a solicitar la rectificación, actualización o eliminación completa de su información de contacto de nuestros registros internos, enviando una simple solicitud formal a nuestra casilla electrónica centralizada: <strong>{emailVal}</strong>.</p>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+// GENERAL MODAL SHELL SYSTEM
+function Modal({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: ReactNode }) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop with elegant blur */}
+      <div className="absolute inset-0 bg-neutral-950/70 backdrop-blur-sm" onClick={onClose} />
+      
+      {/* Paper Container */}
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto relative z-10 shadow-2xl flex flex-col border border-neutral-100">
+        <div className="p-6 border-b border-neutral-100 flex justify-between items-center bg-neutral-50">
+          <h3 className="text-sm font-black text-neutral-900 uppercase tracking-widest">{title}</h3>
+          <button 
+            onClick={onClose} 
+            className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold transition-all flex items-center justify-center select-none"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-8 text-neutral-600 text-xs sm:text-sm leading-relaxed overflow-y-auto max-h-[50vh] space-y-4">
+          {children}
+        </div>
+        <div className="p-5 border-t border-neutral-100 bg-neutral-50 flex justify-end">
+          <button 
+            onClick={onClose} 
+            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all"
+          >
+            Entendido
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -721,7 +921,15 @@ function CatalogSkeleton() {
   );
 }
 
-function ChannelCard({ icon, title, subtitle, description, theme, link }: { icon: ReactNode, title: string, subtitle: string, description: string, theme: string, link: string }) {
+function ChannelCard({ icon, title, subtitle, description, theme, link, onClick }: { 
+  icon: ReactNode, 
+  title: string, 
+  subtitle: string, 
+  description: string, 
+  theme: string, 
+  link?: string, 
+  onClick?: () => void 
+}) {
   const themes: any = {
     emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white',
     pink: 'bg-pink-50 text-pink-600 border-pink-100 group-hover:bg-pink-600 group-hover:text-white',
@@ -730,10 +938,17 @@ function ChannelCard({ icon, title, subtitle, description, theme, link }: { icon
 
   return (
     <motion.a 
-      href={link}
-      target="_blank"
+      href={link || '#'}
+      onClick={(e) => {
+        if (onClick) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      target={link ? "_blank" : undefined}
+      rel={link ? "noopener noreferrer" : undefined}
       whileHover={{ y: -10 }}
-      className="group p-10 bg-white rounded-[2.5rem] border border-neutral-100 shadow-sm hover:shadow-2xl transition-all duration-500"
+      className="group p-10 bg-white rounded-[2.5rem] border border-neutral-100 shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer"
     >
       <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-10 border transition-all duration-500 ${themes[theme]}`}>
         {icon}
@@ -747,12 +962,14 @@ function ChannelCard({ icon, title, subtitle, description, theme, link }: { icon
   );
 }
 
-function ProductCard({ producto, index, adminMode, isUploading, onImageChange }: { 
+function ProductCard({ producto, index, adminMode, isUploading, onImageChange, onInquiry }: { 
   producto: Producto, 
   index: number, 
   adminMode: boolean, 
   isUploading: boolean,
   onImageChange: (e: ChangeEvent<HTMLInputElement>, id: string | number) => void | Promise<void>,
+  onInquiry: (nombre: string, id: string | number) => void,
+  whatsappNo?: string,
   key?: any
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -865,7 +1082,7 @@ function ProductCard({ producto, index, adminMode, isUploading, onImageChange }:
           </div>
  
           <button 
-            onClick={() => window.open(`https://wa.me/573109990000?text=${encodeURIComponent(`¡Hola! Quisiera info sobre el producto: ${producto.Nombre} (Ref: ${producto.Identificación})`)}`)}
+            onClick={() => onInquiry(producto.Nombre, producto.Identificación)}
             className="w-full py-2.5 sm:py-4 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white font-black text-[8px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-1.5"
           >
             <span>Consultar</span> <MessageCircle className="w-3 h-3" />
