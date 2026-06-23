@@ -48,6 +48,9 @@ const sanitizeFileName = (fileName: string): string => {
 
 export default function App() {
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [logoUrl, setLogoUrl] = useState('/agricovet.png');
+  const [newLogoUrl, setNewLogoUrl] = useState('');
+  const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +115,20 @@ export default function App() {
         .order('Nombre', { ascending: true });
 
       if (error) throw error;
-      setProductos(data || []);
+
+      // Extraer configuración de logo si existe
+      const configLogo = data?.find(p => p.Identificación === 'CONFIG_LOGO');
+      if (configLogo) {
+        const url = configLogo.imagen_url || configLogo.Imagen;
+        if (url) {
+          setLogoUrl(url);
+          setNewLogoUrl(url);
+        }
+      }
+
+      // Filtrar entradas de configuración del catálogo visible
+      const productosReales = data?.filter(p => p.Identificación !== 'CONFIG_LOGO') || [];
+      setProductos(productosReales);
     } catch (err: any) {
       console.error('Error fetching productos:', err);
       setError('No se pudo cargar el catálogo. Verifica la conexión a Supabase.');
@@ -282,6 +298,28 @@ export default function App() {
     }
   };
 
+  const handleUpdateLogo = async () => {
+    if (!newLogoUrl.trim()) return;
+    try {
+      setIsUpdatingLogo(true);
+      const { error: logErr } = await supabase.from('productos').upsert({ 
+        'Identificación': 'CONFIG_LOGO', 
+        Nombre: 'CONFIG_LOGO', 
+        imagen_url: newLogoUrl, 
+        Imagen: newLogoUrl,
+        Categoría: 'CONFIG' 
+      });
+      if (logErr) throw logErr;
+      setLogoUrl(newLogoUrl);
+      alert('¡Logo actualizado exitosamente! El cambio será visible inmediatamente para todos los usuarios.');
+    } catch (err: any) {
+      console.error('Error updating logo:', err);
+      alert('Error al actualizar el logo: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setIsUpdatingLogo(false);
+    }
+  };
+
   const categorias = ['Todos', ...Array.from(new Set(productos.map(p => p.Categoría)))];
 
   const productosFiltrados = productos.filter(p => {
@@ -301,10 +339,18 @@ export default function App() {
           <a href="#inicio" className="flex items-center gap-2.5 sm:gap-4 select-none group">
             <div className="relative">
               <img 
-                src="/agricovet.png" 
+                src={logoUrl} 
                 alt="Agricovet Logo" 
                 className="h-11 sm:h-14 w-auto object-contain hover:scale-105 transition-transform duration-300" 
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const fb = e.currentTarget.nextElementSibling as HTMLElement;
+                  if (fb) fb.classList.remove('hidden');
+                }}
               />
+              <div className="hidden w-10 h-10 sm:w-12 sm:h-12 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+                <ShoppingBag className="text-white w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
             </div>
             <div className="flex flex-col">
               <span className="text-sm sm:text-lg font-black tracking-tighter text-neutral-900 uppercase gap-0 leading-none group-hover:text-emerald-600 transition-colors">
@@ -341,7 +387,44 @@ export default function App() {
               exit={{ height: 0, opacity: 0 }}
               className="bg-emerald-50 border-b border-emerald-100 overflow-hidden"
             >
-              <div className="max-w-7xl mx-auto px-6 py-10">
+              <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
+                {/* Logo Configuration Section */}
+                <div className="bg-white p-8 rounded-[2rem] shadow-xl border border-emerald-100">
+                  <h3 className="text-xl font-black text-neutral-900 mb-6 flex items-center gap-3">
+                    <Settings className="w-6 h-6 text-emerald-600" /> Configuración de Logo
+                  </h3>
+                  <div className="flex flex-col md:flex-row gap-4 items-end">
+                    <div className="flex-grow">
+                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">URL del Logo (Imagen)</label>
+                      <input 
+                        type="text" 
+                        placeholder="Pega aquí la URL de la imagen (ej: https://supabase.co/logo.jpg)"
+                        className="w-full px-5 py-3 bg-neutral-50 border border-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono text-xs"
+                        value={newLogoUrl}
+                        onChange={(e) => setNewLogoUrl(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      onClick={handleUpdateLogo}
+                      disabled={isUpdatingLogo || !newLogoUrl.trim()}
+                      className={`px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all h-[46px] flex items-center justify-center gap-2 ${
+                        isUpdatingLogo || !newLogoUrl.trim()
+                        ? 'bg-neutral-100 text-neutral-400'
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200'
+                      }`}
+                    >
+                      {isUpdatingLogo ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Actualizando...</>
+                      ) : (
+                        <><CheckCircle2 className="w-4 h-4" /> Guardar Logo</>
+                      )}
+                    </button>
+                  </div>
+                  <p className="mt-4 text-[10px] text-neutral-400 italic">
+                    * Puedes usar una URL directa de Supabase Storage, Imgur, o cualquier servidor de imágenes.
+                  </p>
+                </div>
+
                 <div className="bg-white p-8 rounded-[2rem] shadow-xl border border-emerald-100">
                   <h3 className="text-xl font-black text-neutral-900 mb-6 flex items-center gap-3">
                     <Upload className="w-6 h-6 text-emerald-600" /> Agregar Nuevo Producto
@@ -453,10 +536,18 @@ export default function App() {
                   className="absolute -top-8 -right-4 bg-white p-3 rounded-full shadow-2xl border border-neutral-100 z-20 flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 cursor-pointer select-none"
                 >
                   <img 
-                    src="/agricovet.png" 
+                    src={logoUrl} 
                     alt="Sello Agricovet" 
                     className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const fb = e.currentTarget.parentElement?.querySelector('.logo-fallback') as HTMLElement;
+                      if (fb) fb.classList.remove('hidden');
+                    }}
                   />
+                  <div className="logo-fallback hidden flex flex-col items-center justify-center text-center">
+                    <ShieldCheck className="w-8 h-8 text-emerald-600" />
+                  </div>
                 </motion.div>
 
                 <div className="aspect-square rounded-[2.5rem] overflow-hidden shadow-[0_45px_90px_-25px_rgba(0,0,0,0.12)] relative">
@@ -755,9 +846,12 @@ export default function App() {
           {/* Logo Brand with dynamic fallback */}
           <div className="flex flex-col items-center justify-center select-none">
             <img 
-              src="/agricovet.png" 
+              src={logoUrl} 
               alt="Agricovet Logo" 
               className="h-16 sm:h-20 w-auto object-contain mb-3 filter grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer" 
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
             />
             <p className="text-xs font-black text-white tracking-widest uppercase mb-1">AGRIC<span className="text-emerald-500">OVET</span></p>
             <p className="text-[9px] text-neutral-500 tracking-wider">De Guatemala S.A. • Insumos de Vanguardia</p>
