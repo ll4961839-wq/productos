@@ -117,17 +117,31 @@ export default function App() {
       if (error) throw error;
 
       // Extraer configuración de logo si existe
+      // Buscamos específicamente por Identificación 'CONFIG_LOGO'
       const configLogo = data?.find(p => p.Identificación === 'CONFIG_LOGO');
       if (configLogo) {
-        const url = configLogo.imagen_url || configLogo.Imagen;
+        let url = configLogo.imagen_url || configLogo.Imagen;
         if (url) {
+          // Normalizar URL (manejar espacios y caracteres especiales)
+          if (url.startsWith('http')) {
+            try {
+              const urlObj = new URL(url);
+              url = urlObj.toString();
+            } catch (e) {
+              console.warn('URL de logo inválida:', url);
+            }
+          }
           setLogoUrl(url);
           setNewLogoUrl(url);
         }
       }
 
       // Filtrar entradas de configuración del catálogo visible
-      const productosReales = data?.filter(p => p.Identificación !== 'CONFIG_LOGO') || [];
+      const productosReales = data?.filter(p => 
+        p.Identificación !== 'CONFIG_LOGO' && 
+        p.Identificación !== 'CONFIG' &&
+        p.Nombre !== 'CONFIG_LOGO'
+      ) || [];
       setProductos(productosReales);
     } catch (err: any) {
       console.error('Error fetching productos:', err);
@@ -302,16 +316,18 @@ export default function App() {
     if (!newLogoUrl.trim()) return;
     try {
       setIsUpdatingLogo(true);
+      const sanitizedUrl = newLogoUrl.trim();
       const { error: logErr } = await supabase.from('productos').upsert({ 
         'Identificación': 'CONFIG_LOGO', 
         Nombre: 'CONFIG_LOGO', 
-        imagen_url: newLogoUrl, 
-        Imagen: newLogoUrl,
+        imagen_url: sanitizedUrl, 
+        Imagen: sanitizedUrl,
         Categoría: 'CONFIG' 
       });
       if (logErr) throw logErr;
-      setLogoUrl(newLogoUrl);
-      alert('¡Logo actualizado exitosamente! El cambio será visible inmediatamente para todos los usuarios.');
+      setLogoUrl(sanitizedUrl);
+      setNewLogoUrl(sanitizedUrl);
+      alert('¡Logo actualizado exitosamente!');
     } catch (err: any) {
       console.error('Error updating logo:', err);
       alert('Error al actualizar el logo: ' + (err.message || 'Error desconocido'));
@@ -341,14 +357,20 @@ export default function App() {
               <img 
                 src={logoUrl} 
                 alt="Agricovet Logo" 
-                className="h-11 sm:h-14 w-auto object-contain hover:scale-105 transition-transform duration-300" 
+                className="h-11 sm:h-14 w-auto object-contain hover:scale-105 transition-transform duration-300 relative z-10" 
                 onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  const fb = e.currentTarget.nextElementSibling as HTMLElement;
-                  if (fb) fb.classList.remove('hidden');
+                  const target = e.currentTarget;
+                  // Si falla la URL de configuración, intentamos fallback local
+                  if (logoUrl !== '/agricovet.png') {
+                    setLogoUrl('/agricovet.png');
+                  } else {
+                    target.style.display = 'none';
+                    const fb = target.nextElementSibling as HTMLElement;
+                    if (fb) fb.classList.remove('hidden');
+                  }
                 }}
               />
-              <div className="hidden w-10 h-10 sm:w-12 sm:h-12 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="hidden w-10 h-10 sm:w-12 sm:h-12 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg absolute inset-0">
                 <ShoppingBag className="text-white w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
@@ -393,32 +415,41 @@ export default function App() {
                   <h3 className="text-xl font-black text-neutral-900 mb-6 flex items-center gap-3">
                     <Settings className="w-6 h-6 text-emerald-600" /> Configuración de Logo
                   </h3>
-                  <div className="flex flex-col md:flex-row gap-4 items-end">
-                    <div className="flex-grow">
-                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">URL del Logo (Imagen)</label>
-                      <input 
-                        type="text" 
-                        placeholder="Pega aquí la URL de la imagen (ej: https://supabase.co/logo.jpg)"
-                        className="w-full px-5 py-3 bg-neutral-50 border border-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono text-xs"
-                        value={newLogoUrl}
-                        onChange={(e) => setNewLogoUrl(e.target.value)}
-                      />
-                    </div>
-                    <button
-                      onClick={handleUpdateLogo}
-                      disabled={isUpdatingLogo || !newLogoUrl.trim()}
-                      className={`px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all h-[46px] flex items-center justify-center gap-2 ${
-                        isUpdatingLogo || !newLogoUrl.trim()
-                        ? 'bg-neutral-100 text-neutral-400'
-                        : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200'
-                      }`}
-                    >
-                      {isUpdatingLogo ? (
-                        <><Loader2 className="w-4 h-4 animate-spin" /> Actualizando...</>
+                  <div className="flex flex-col md:flex-row gap-6 items-start">
+                    <div className="w-24 h-24 bg-neutral-50 rounded-2xl border border-neutral-100 flex items-center justify-center overflow-hidden shrink-0">
+                      {newLogoUrl ? (
+                        <img src={newLogoUrl} alt="Preview" className="w-full h-full object-contain p-2" onError={(e) => e.currentTarget.src = '/agricovet.png'} />
                       ) : (
-                        <><CheckCircle2 className="w-4 h-4" /> Guardar Logo</>
+                        <ShoppingBag className="w-8 h-8 text-neutral-200" />
                       )}
-                    </button>
+                    </div>
+                    <div className="flex-grow w-full space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">URL del Logo (Imagen)</label>
+                        <input 
+                          type="text" 
+                          placeholder="Pega aquí la URL de la imagen..."
+                          className="w-full px-5 py-3 bg-neutral-50 border border-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono text-xs"
+                          value={newLogoUrl}
+                          onChange={(e) => setNewLogoUrl(e.target.value)}
+                        />
+                      </div>
+                      <button
+                        onClick={handleUpdateLogo}
+                        disabled={isUpdatingLogo || !newLogoUrl.trim()}
+                        className={`px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all h-[46px] flex items-center justify-center gap-2 ${
+                          isUpdatingLogo || !newLogoUrl.trim()
+                          ? 'bg-neutral-100 text-neutral-400'
+                          : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200'
+                        }`}
+                      >
+                        {isUpdatingLogo ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" /> Actualizando...</>
+                        ) : (
+                          <><CheckCircle2 className="w-4 h-4" /> Guardar Logo</>
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <p className="mt-4 text-[10px] text-neutral-400 italic">
                     * Puedes usar una URL directa de Supabase Storage, Imgur, o cualquier servidor de imágenes.
@@ -533,16 +564,20 @@ export default function App() {
                 {/* Official Stamp Logo */}
                 <motion.div 
                   whileHover={{ scale: 1.1, rotate: 6 }}
-                  className="absolute -top-8 -right-4 bg-white p-3 rounded-full shadow-2xl border border-neutral-100 z-20 flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 cursor-pointer select-none"
+                  className="absolute -top-8 -right-4 bg-white p-3 rounded-full shadow-2xl border border-neutral-100 z-20 flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 cursor-pointer select-none overflow-hidden"
                 >
                   <img 
                     src={logoUrl} 
                     alt="Sello Agricovet" 
                     className="w-full h-full object-contain"
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      const fb = e.currentTarget.parentElement?.querySelector('.logo-fallback') as HTMLElement;
-                      if (fb) fb.classList.remove('hidden');
+                      if (logoUrl !== '/agricovet.png') {
+                        setLogoUrl('/agricovet.png');
+                      } else {
+                        e.currentTarget.style.display = 'none';
+                        const fb = e.currentTarget.parentElement?.querySelector('.logo-fallback') as HTMLElement;
+                        if (fb) fb.classList.remove('hidden');
+                      }
                     }}
                   />
                   <div className="logo-fallback hidden flex flex-col items-center justify-center text-center">
@@ -850,7 +885,11 @@ export default function App() {
               alt="Agricovet Logo" 
               className="h-16 sm:h-20 w-auto object-contain mb-3 filter grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer" 
               onError={(e) => {
-                e.currentTarget.style.display = 'none';
+                if (logoUrl !== '/agricovet.png') {
+                  setLogoUrl('/agricovet.png');
+                } else {
+                  e.currentTarget.style.display = 'none';
+                }
               }}
             />
             <p className="text-xs font-black text-white tracking-widest uppercase mb-1">AGRIC<span className="text-emerald-500">OVET</span></p>
