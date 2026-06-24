@@ -358,31 +358,15 @@ export default function App() {
               <div className="relative flex items-center justify-center">
                 <img 
                   src={logoUrl} 
+                  key={logoUrl}
                   alt="Agricovet Logo" 
-                  className={`h-11 sm:h-14 w-auto object-contain hover:scale-105 transition-all duration-300 relative z-10 ${
-                    logoLoadError ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
-                  }`}
-                  onLoad={() => {
-                    setLogoLoaded(true);
-                    setLogoLoadError(false);
-                  }}
-                  onError={() => {
-                    // Si falla y no es el fallback, intentamos fallback
+                  className="h-11 sm:h-14 w-auto object-contain hover:scale-105 transition-all duration-300 relative z-10"
+                  onError={(e) => {
                     if (logoUrl !== '/agricovet.png') {
-                      console.log('Error cargando logo personalizado, usando fallback local...');
                       setLogoUrl('/agricovet.png');
-                    } else {
-                      setLogoLoadError(true);
                     }
                   }}
                 />
-                
-                {/* Fallback visual si todo falla */}
-                {logoLoadError && (
-                  <div className="absolute inset-0 w-10 h-10 sm:w-12 sm:h-12 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg mx-auto">
-                    <ShoppingBag className="text-white w-5 h-5 sm:w-6 sm:h-6" />
-                  </div>
-                )}
               </div>
             <div className="flex flex-col">
               <span className="text-sm sm:text-lg font-black tracking-tighter text-neutral-900 uppercase gap-0 leading-none group-hover:text-emerald-600 transition-colors">
@@ -578,21 +562,15 @@ export default function App() {
                 >
                   <img 
                     src={logoUrl} 
+                    key={`seal-${logoUrl}`}
                     alt="Sello Agricovet" 
-                    className={`w-full h-full object-contain transition-opacity duration-300 ${logoLoadError ? 'opacity-0' : 'opacity-100'}`}
+                    className="w-full h-full object-contain"
                     onError={(e) => {
                       if (logoUrl !== '/agricovet.png') {
                         setLogoUrl('/agricovet.png');
-                      } else {
-                        setLogoLoadError(true);
                       }
                     }}
                   />
-                  {logoLoadError && (
-                    <div className="flex flex-col items-center justify-center text-center">
-                      <ShieldCheck className="w-8 h-8 text-emerald-600" />
-                    </div>
-                  )}
                 </motion.div>
 
                 <div className="aspect-square rounded-[2.5rem] overflow-hidden shadow-[0_45px_90px_-25px_rgba(0,0,0,0.12)] relative">
@@ -892,13 +870,12 @@ export default function App() {
           <div className="flex flex-col items-center justify-center select-none">
             <img 
               src={logoUrl} 
+              key={`footer-${logoUrl}`}
               alt="Agricovet Logo" 
-              className={`h-16 sm:h-20 w-auto object-contain mb-3 filter grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer ${logoLoadError ? 'hidden' : 'block'}`}
-              onError={() => {
+              className="h-16 sm:h-20 w-auto object-contain mb-3 filter grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer" 
+              onError={(e) => {
                 if (logoUrl !== '/agricovet.png') {
                   setLogoUrl('/agricovet.png');
-                } else {
-                  setLogoLoadError(true);
                 }
               }}
             />
