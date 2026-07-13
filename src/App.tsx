@@ -369,7 +369,7 @@ export default function App() {
                 />
               </div>
             <div className="flex flex-col">
-              <span className="text-sm sm:text-lg font-black tracking-tighter text-neutral-900 uppercase gap-0 leading-none group-hover:text-emerald-600 transition-colors">
+              <span translate="no" className="text-sm sm:text-lg font-black tracking-tighter text-neutral-900 uppercase gap-0 leading-none group-hover:text-emerald-600 transition-colors">
                 AGRIC<span className="text-emerald-600">OVET</span>
               </span>
               <span className="text-[7px] sm:text-[9px] font-bold tracking-[0.15em] text-neutral-400 uppercase leading-none mt-1">
@@ -676,7 +676,7 @@ export default function App() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-8">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                   <AnimatePresence mode="popLayout">
                     {productosAMostrar.map((p, idx) => (
                       <ProductCard 
@@ -731,9 +731,9 @@ export default function App() {
         {/* LAB GRID - MOVED DOWN FOR REDIRECT FLOW */}
         <section id="laboratorios" className="py-20 bg-white border-b border-neutral-100/60">
           <div className="max-w-7xl mx-auto px-6 text-center">
-            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] mb-12">Principales Laboratorios y Marcas Aliadas</p>
+            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] mb-12">Marcas Aliadas</p>
             <div className="flex flex-wrap justify-center items-center gap-10 md:gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-              {['RAINBOW', 'BIOZOO', 'WELLCO', 'TECNIAGRO', 'LAVET', 'FORAGRO'].map(lab => (
+              {['BIOZOO', 'WELLCO', 'TECNIAGRO', 'LAVET', 'FORAGRO'].map(lab => (
                 <span key={lab} className="text-xl md:text-2xl font-black text-neutral-400 hover:text-neutral-900 transition-colors cursor-default tracking-wider">
                   {lab}
                 </span>
@@ -879,7 +879,7 @@ export default function App() {
                 }
               }}
             />
-            <p className="text-xs font-black text-white tracking-widest uppercase mb-1">AGRIC<span className="text-emerald-500">OVET</span></p>
+            <p translate="no" className="text-xs font-black text-white tracking-widest uppercase mb-1">AGRIC<span className="text-emerald-500">OVET</span></p>
             <p className="text-[9px] text-neutral-500 tracking-wider">De Guatemala S.A. • Insumos de Vanguardia</p>
           </div>
 
@@ -1101,7 +1101,7 @@ function ProductCard({ producto, index, adminMode, isUploading, onImageChange, o
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.6, delay: (index % 4) * 0.1 }}
-      className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-neutral-100 overflow-hidden shadow-sm hover:shadow-[0_45px_90px_-25px_rgba(0,0,0,0.12)] hover:border-emerald-100 transition-all group flex flex-col h-full relative"
+      className="bg-white rounded-2xl sm:rounded-3xl border border-neutral-100 overflow-hidden shadow-sm hover:shadow-[0_45px_90px_-25px_rgba(0,0,0,0.12)] hover:border-emerald-100 transition-all group flex flex-col h-full relative"
     >
       {/* Product Image Stage */}
       <div className="relative aspect-square overflow-hidden bg-neutral-100/50 group/img">
@@ -1123,7 +1123,7 @@ function ProductCard({ producto, index, adminMode, isUploading, onImageChange, o
           <img 
             src={producto.imagen_url || producto.Imagen || "https://images.unsplash.com/photo-1614850715649-1d0106293bd1?auto=format&fit=crop&q=80&w=600"} 
             alt={producto.Nombre}
-            className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-700 ease-out ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+            className={`w-full h-full object-contain p-4 group-hover:scale-105 transition-all duration-700 ease-out ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
             loading="lazy"
             decoding="async"
             onLoad={() => setImageLoaded(true)}
@@ -1170,9 +1170,9 @@ function ProductCard({ producto, index, adminMode, isUploading, onImageChange, o
       </div>
       
       {/* Product Content Stage */}
-      <div className="p-4 sm:p-8 flex flex-col flex-grow">
-        <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-4">
-          <span className="text-[8px] sm:text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg uppercase tracking-[0.1em] sm:tracking-widest truncate max-w-[85px] sm:max-w-none">
+      <div className="p-4 sm:p-5 flex flex-col flex-grow">
+        <div className="flex items-center gap-2 sm:gap-2 mb-2 sm:mb-3">
+          <span className="text-[8px] sm:text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 sm:px-2.5 py-1 sm:py-1 rounded-md sm:rounded-lg uppercase tracking-[0.1em] sm:tracking-widest truncate max-w-[85px] sm:max-w-none">
             {producto.Categoría}
           </span>
           <span className="text-[7px] sm:text-[9px] text-neutral-300 font-mono font-bold tracking-tighter">
@@ -1180,19 +1180,19 @@ function ProductCard({ producto, index, adminMode, isUploading, onImageChange, o
           </span>
         </div>
         
-        <h3 className="text-xs sm:text-lg font-extrabold sm:font-black text-neutral-900 mb-3 sm:mb-6 group-hover:text-emerald-700 transition-colors leading-tight line-clamp-2 h-8 sm:h-auto overflow-hidden">
+        <h3 className="text-xs sm:text-base font-extrabold sm:font-black text-neutral-900 mb-2 sm:mb-4 group-hover:text-emerald-700 transition-colors leading-tight line-clamp-2 h-8 sm:h-auto overflow-hidden">
           {producto.Nombre}
         </h3>
         
-        <div className="mt-auto space-y-3 sm:space-y-6">
+        <div className="mt-auto space-y-2 sm:space-y-4">
           <div className="flex items-center justify-between gap-1.5">
-            <div className={`flex items-center gap-1 sm:gap-2 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.15em] ${isBajoPedido ? 'text-orange-500' : 'text-emerald-500'}`}>
+            <div className={`flex items-center gap-1 sm:gap-2 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.1em] sm:tracking-[0.15em] ${isBajoPedido ? 'text-orange-500' : 'text-emerald-500'}`}>
               <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isBajoPedido ? 'bg-orange-500' : 'bg-emerald-500'} animate-pulse`} />
               <span className="truncate">{isBajoPedido ? 'Pedir' : 'Stock'}</span>
             </div>
             
             {producto.Precio && (
-              <span className="text-sm sm:text-xl font-black text-neutral-900 tracking-tighter">
+              <span className="text-sm sm:text-lg font-black text-neutral-900 tracking-tighter">
                 ${producto.Precio}
               </span>
             )}
@@ -1200,7 +1200,7 @@ function ProductCard({ producto, index, adminMode, isUploading, onImageChange, o
  
           <button 
             onClick={() => onInquiry(producto.Nombre, producto.Identificación)}
-            className="w-full py-2.5 sm:py-4 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white font-black text-[8px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-1.5"
+            className="w-full py-2 sm:py-3 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white font-black text-[8px] sm:text-[9px] uppercase tracking-[0.15em] sm:tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-1.5"
           >
             <span>Consultar</span> <MessageCircle className="w-3 h-3" />
           </button>
