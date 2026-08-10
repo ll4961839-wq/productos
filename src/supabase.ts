@@ -1,35 +1,82 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 let supabaseInstance: SupabaseClient | null = null;
+let lastUrl: string = '';
+let lastKey: string = '';
 
-/**
- * Inicialización protegida del cliente de Supabase.
- * Evita fallos en tiempo de construcción y centraliza la lógica de conexión.
- */
-export const getSupabase = (): SupabaseClient => {
-  if (supabaseInstance) return supabaseInstance;
+export const getSupabase = (): SupabaseClient | null => {
+  const localUrl = typeof window !== 'undefined' ? localStorage.getItem('supabase_url') : null;
+  const localKey = typeof window !== 'undefined' ? localStorage.getItem('supabase_anon_key') : null;
 
-  const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+  const supabaseUrl = localUrl || (import.meta as any).env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = localKey || (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    // Si faltan las credenciales, devolvemos un proxy que avisa en consola en lugar de romper la app
-    console.warn('⚠️ Supabase URL o Anon Key no configuradas en .env');
-    return null as any;
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your-project-id')) {
+    return null;
   }
 
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
-  return supabaseInstance;
+  if (supabaseInstance && lastUrl === supabaseUrl && lastKey === supabaseAnonKey) {
+    return supabaseInstance;
+  }
+
+  try {
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+    lastUrl = supabaseUrl;
+    lastKey = supabaseAnonKey;
+    return supabaseInstance;
+  } catch (e) {
+    console.warn('⚠️ Error al inicializar Supabase:', e);
+    return null;
+  }
+};
+
+const createDummyQueryBuilder = () => {
+  const dummy: any = {
+    select: () => dummy,
+    insert: () => dummy,
+    update: () => dummy,
+    delete: () => dummy,
+    eq: () => dummy,
+    order: () => dummy,
+    single: () => Promise.resolve({ data: null, error: { message: 'Supabase no configurado' } }),
+    then: (resolve: any) => resolve({ data: [], error: { message: 'Supabase no configurado' } }),
+  };
+  return dummy;
 };
 
 // Exportación simplificada para uso directo en componentes
 export const supabase = {
-  from: (table: string) => getSupabase()?.from(table),
+  from: (table: string) => {
+    const client = getSupabase();
+    if (!client) {
+      return createDummyQueryBuilder();
+    }
+    return client.from(table);
+  },
   storage: {
-    from: (bucket: string) => getSupabase()?.storage.from(bucket)
+    from: (bucket: string) => {
+      const client = getSupabase();
+      if (!client) {
+        return {
+          upload: () => Promise.resolve({ data: null, error: { message: 'Supabase no configurado' } }),
+          getPublicUrl: () => ({ data: { publicUrl: '' } })
+        };
+      }
+      return client.storage.from(bucket);
+    }
   },
   auth: {
-    getSession: () => getSupabase()?.auth.getSession(),
-    onAuthStateChange: (callback: any) => getSupabase()?.auth.onAuthStateChange(callback),
+    getSession: () => {
+      const client = getSupabase();
+      if (!client) return Promise.resolve({ data: { session: null }, error: null });
+      return client.auth.getSession();
+    },
+    onAuthStateChange: (callback: any) => {
+      const client = getSupabase();
+      if (!client) return { data: { subscription: { unsubscribe: () => {} } } };
+      return client.auth.onAuthStateChange(callback);
+    },
   }
 } as any;
+
+
